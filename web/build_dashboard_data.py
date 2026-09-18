@@ -59,6 +59,35 @@ FUNDAMENTALS = {
     "priceTarget": 734.11,
 }
 
+# From FN_Short_Thesis_Model.xlsx Tab 11/12 (see notebooks/fn_short_thesis_review.ipynb Section 1
+# for independent recomputation -- ties to these exactly) and FN_Short_Thesis_Report.docx Section 8.
+SCENARIOS = [
+    {"name": "BEAR", "revGrowth": 0.090, "grossMargin": 0.120, "eps29": 12.21, "fcf29": 83, "multiple": 18.0, "target": 219.70, "upside": -0.432},
+    {"name": "BASE", "revGrowth": 0.2005, "grossMargin": 0.1238, "eps29": 19.81, "fcf29": 480, "multiple": 30.1, "target": 595.98, "upside": 0.541},
+    {"name": "BULL", "revGrowth": 0.357, "grossMargin": 0.127, "eps29": 32.78, "fcf29": 2056, "multiple": 30.0, "target": 983.43, "upside": 1.544},
+]
+
+# Peer valuation pulled live 2026-09-18 (stockanalysis.com) -- for the "is FN's multiple actually
+# rich vs. peers" question. It isn't: FN's forward P/E is the LOWEST of the three. The thesis is a
+# quality-gap argument (peers show real margin/FCF improvement FN doesn't), not a multiple-arbitrage one.
+PEER_VALUATION = [
+    {
+        "ticker": "FN", "name": "Fabrinet", "price": 386.64, "marketCapB": 14.02, "peFwd": 21.55,
+        "marginTrend": "flat ~12%, no expansion in the AI cycle (peaked FY23 at 12.7%)",
+        "verdict": "SHORT candidate. No margin/FCF evidence to justify riding the sector re-rating.",
+    },
+    {
+        "ticker": "COHR", "name": "Coherent Corp", "price": 310.27, "marketCapB": 60.76, "peFwd": 32.97,
+        "marginTrend": "expanding, ~34.8% -> 40.2% (non-GAAP) through the same period",
+        "verdict": "Screened out. Genuine margin expansion -- but a live, hard-to-quantify competitive threat (InP entrants) confounds a clean short OR long case.",
+    },
+    {
+        "ticker": "LITE", "name": "Lumentum Holdings", "price": 910.00, "marketCapB": 81.63, "peFwd": 41.95,
+        "marginTrend": "real FY2026 FCF inflection (turned cash-generative)",
+        "verdict": "Screened out. Distorted by a one-off $7.8bn debt-extinguishment GAAP charge (net income -$6.94B) -- not a clean read either direction.",
+    },
+]
+
 
 def _fetch_price_history(symbol: str, range_: str = "8y") -> pd.DataFrame:
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={range_}&interval=1d"
@@ -139,6 +168,8 @@ def render_dashboard(data_payload: dict, fundamentals: dict, template_path: Path
     template = template_path.read_text()
     combined = dict(data_payload)
     combined["fundamentals"] = fundamentals
+    combined["scenarios"] = SCENARIOS
+    combined["peer_valuation"] = PEER_VALUATION
 
     review_path = REPO_ROOT / "output" / "FN_short_thesis_review.json"
     if review_path.exists():

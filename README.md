@@ -74,6 +74,16 @@ sourced from public aggregators) — mapping IBKR's fundamentals XML fields
 into that schema is the next step once TWS/Gateway is reachable to inspect
 the real payload.
 
+The dashboard leads with an **executive summary** making the short case
+against FN, specifically vs. COHR and LITE (scenario price targets from
+`SCENARIOS`, peer valuation from `PEER_VALUATION` — both in
+`web/build_dashboard_data.py`, sourced from `FN_Short_Thesis_Model.xlsx` and
+`FN_Short_Thesis_Report.docx`). It pulls in the peer margin chart,
+EV/EBITDA reconciliation, and options-implied move from
+`output/FN_short_thesis_review.json` when present — regenerate that via the
+notebook (see below) before rebuilding the dashboard if the review data
+looks stale.
+
 ### Short thesis model review
 
 `notebooks/fn_short_thesis_review.ipynb` is a follow-up review of
