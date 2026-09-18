@@ -16,9 +16,15 @@ class IBKRConfig:
 
     Defaults match the standard paper-trading TWS port. Live TWS uses 7496,
     live Gateway uses 4001, paper Gateway uses 4002.
+
+    host defaults to the Windows host IP rather than 127.0.0.1 because this
+    runs from WSL2 and TWS runs on the Windows side -- WSL2 is a separate
+    network namespace, so localhost doesn't reach it. Find the current IP
+    with `ipconfig` on Windows if it changes between reboots (NAT networking
+    mode reassigns it; mirrored mode wouldn't need this override at all).
     """
 
-    host: str = "127.0.0.1"
+    host: str = "172.27.224.1"
     port: int = 7497
     client_id: int = 17
     timeout: float = 15.0

@@ -155,6 +155,12 @@ def summarize_horizons(
     return results
 
 
+def daily_quantile_bands(price_paths: np.ndarray, quantiles: tuple = (0.05, 0.25, 0.5, 0.75, 0.95)) -> dict:
+    """Full trading-day-by-trading-day quantile bands, for fan charts that plot every day
+    rather than just the discrete 3/6/12-month markers `summarize_horizons` reads off."""
+    return {q: np.quantile(price_paths, q, axis=0) for q in quantiles}
+
+
 def summarize_horizons_to_frame(horizons: list[HorizonForecast]) -> pd.DataFrame:
     rows = []
     for h in horizons:

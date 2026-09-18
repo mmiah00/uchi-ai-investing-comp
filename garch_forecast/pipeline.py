@@ -195,7 +195,7 @@ def _plot_fan_chart(bars: pd.DataFrame, price_paths: np.ndarray, last_price: flo
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--symbol", default="FN")
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", default="172.27.224.1", help="TWS/Gateway host; the Windows host IP when running from WSL2")
     parser.add_argument("--port", type=int, default=7497, help="7497=paper TWS, 7496=live TWS, 4002=paper Gateway, 4001=live Gateway")
     parser.add_argument("--client-id", type=int, default=17)
     parser.add_argument("--lookback-years", type=int, default=8)

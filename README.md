@@ -27,6 +27,17 @@ never places orders.
 Default ports: `7497` paper TWS, `7496` live TWS, `4002` paper Gateway,
 `4001` live Gateway.
 
+Running from WSL2 with TWS on the Windows side: `127.0.0.1` won't reach it
+(separate network namespace) — `config.py` defaults to the Windows host IP
+instead (`172.27.224.1` here). Find yours with `ipconfig` on Windows if it
+changes between reboots, or override with `--host`.
+
+Fundamentals require the Reuters Fundamentals data subscription on the
+account (Client Portal > Settings > Market Data Subscriptions) — without it
+`fetch_fundamentals` returns an empty dict rather than failing. Live quotes
+fall back to delayed data automatically if the account isn't subscribed to
+real-time for a symbol.
+
 ### Run
 
 ```
@@ -43,6 +54,25 @@ Outputs land in `output/`:
 
 Raw IBKR pulls are cached in `cache/` so repeated runs/iteration don't need a
 live connection every time (`--use-cache`).
+
+### Web dashboard
+
+`web/` generates a standalone HTML dashboard (company summary, fundamentals
+snapshot, and a daily 3-month-history + 12-month-forecast fan chart):
+
+```
+python3 web/build_dashboard_data.py
+```
+
+Writes `output/FN_dashboard.html` (open it directly in a browser). It pulls
+price history from Yahoo Finance's public chart endpoint rather than IBKR,
+since it doesn't require a local TWS/Gateway session the way
+`garch_forecast.pipeline` does — swap in `IBKRClient.fetch_historical_bars`
+there once you want it on the same live feed. The fundamentals shown are a
+hand-entered snapshot (`FUNDAMENTALS` in `web/build_dashboard_data.py`,
+sourced from public aggregators) — mapping IBKR's fundamentals XML fields
+into that schema is the next step once TWS/Gateway is reachable to inspect
+the real payload.
 
 ### Model notes
 

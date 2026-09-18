@@ -95,8 +95,12 @@ class IBKRClient:
         return df[["open", "high", "low", "close", "volume"]]
 
     def fetch_snapshot(self) -> MarketSnapshot:
-        """One-shot live snapshot quote (requires live/delayed market data permission)."""
+        """One-shot snapshot quote. Falls back to delayed data (IBKR type 3) since most
+        accounts -- paper accounts especially -- aren't entitled to real-time quotes for
+        every symbol; delayed is ~15min behind but doesn't require a market data subscription.
+        """
         contract = self._contract()
+        self.ib.reqMarketDataType(3)
         ticker = self.ib.reqMktData(contract, "", snapshot=True)
         self.ib.sleep(2.5)  # give IBKR time to populate the snapshot fields
         snap = MarketSnapshot(
