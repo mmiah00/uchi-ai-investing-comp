@@ -158,6 +158,26 @@
   .stat-strip .s .k{ font-size:11px; color:var(--muted); }
   .stat-strip .s .v{ font-family:var(--font-mono); font-size:14.5px; font-weight:600; }
 
+  /* ---------- thesis review section ---------- */
+  .review-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  @media (max-width:820px){ .review-grid{ grid-template-columns:1fr; } }
+  .review-card-title{ font-size:13px; font-weight:600; margin:0 0 12px; }
+  .review-stat{ display:flex; justify-content:space-between; align-items:baseline; padding:6px 0; border-bottom:1px solid var(--line); font-size:12.5px; }
+  .review-stat:last-child{ border-bottom:none; }
+  .review-stat .k{ color:var(--muted); }
+  .review-stat .v{ font-family:var(--font-mono); font-weight:600; }
+  .review-note{ font-size:12px; color:var(--ink-2); line-height:1.6; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); }
+  .bug-flag{ display:inline-block; font-family:var(--font-mono); font-size:10.5px; font-weight:600; color:var(--bad); background:color-mix(in srgb, var(--bad) 12%, transparent); border-radius:4px; padding:2px 7px; margin-bottom:8px; }
+  .gap-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .gap-list li{ font-size:12.5px; line-height:1.55; padding-left:16px; position:relative; color:var(--ink-2); }
+  .gap-list li::before{ content:"—"; position:absolute; left:0; color:var(--muted); }
+  .gap-list b{ color:var(--ink); }
+  .scenario-table{ width:100%; border-collapse:collapse; font-size:12px; }
+  .scenario-table th{ text-align:left; font-weight:600; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; padding:0 8px 8px 0; border-bottom:1px solid var(--line); }
+  .scenario-table td{ padding:7px 8px 7px 0; border-bottom:1px solid var(--line); font-family:var(--font-mono); }
+  .scenario-table tr:last-child td{ border-bottom:none; }
+  .scenario-table td:first-child{ font-family:var(--font-body); font-weight:600; }
+
   footer{ border-top:1px solid var(--line); padding-top:22px; font-size:12.5px; color:var(--muted); line-height:1.7; }
   footer .foot-grid{ display:grid; grid-template-columns:2fr 1fr; gap:24px; }
   @media (max-width:720px){ footer .foot-grid{ grid-template-columns:1fr; } }
@@ -258,6 +278,44 @@
     <div class="horizon-tiles" id="horizon-tiles"></div>
 
     <div class="stat-strip" id="stat-strip"></div>
+  </section>
+
+  <section id="thesis-review" hidden>
+    <div class="sec-head">
+      <div class="eyebrow">Model QA</div>
+      <h2>Short thesis review</h2>
+      <p>Follow-up on six review findings against <code>FN_Short_Thesis_Model.xlsx</code> — each either resolved with real data or confirmed unresolvable from public filings. Full workings in <code>notebooks/fn_short_thesis_review.ipynb</code>.</p>
+    </div>
+
+    <div class="card chart-card" style="margin-bottom:20px;">
+      <div class="chart-toprow">
+        <div class="legend" id="peer-legend"></div>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" id="peer-svg" width="1000" height="300" viewBox="0 0 1000 300" preserveAspectRatio="none"></svg>
+        <div class="tooltip" id="peer-tooltip"></div>
+      </div>
+    </div>
+
+    <div class="review-grid">
+      <div class="card">
+        <h3 class="review-card-title">EV/EBITDA, reconciled</h3>
+        <div id="ebitda-bridge"></div>
+      </div>
+      <div class="card">
+        <h3 class="review-card-title">Nov 2 catalyst — Q1 FY27 checkpoints</h3>
+        <div id="q1-bridge"></div>
+      </div>
+      <div class="card">
+        <h3 class="review-card-title">Options-implied move into earnings</h3>
+        <div id="implied-move"></div>
+      </div>
+    </div>
+
+    <div class="card note-card" style="margin-top:20px; display:block;">
+      <b>What's still a data gap (not fabricated):</b>
+      <ul class="gap-list" id="data-gaps" style="margin-top:10px;"></ul>
+    </div>
   </section>
 
   <footer>
@@ -622,5 +680,120 @@
     ' daily log returns; forecast bands come from ' + DATA.model.n_simulations.toLocaleString('en-US') +
     ' Monte Carlo paths drawn from the fitted volatility process, compounded forward from the ' + DATA.as_of_date + ' close of ' + fmtUSD(DATA.last_price) +
     '. The mean/drift term is a constant estimated from history, not a fundamentals-adjusted forecast — see the repo\'s garch_forecast/garch_model.py for where that hook goes next.';
+
+  // ---------- short thesis review section (optional -- only if the notebook's export is present) ----------
+  if (DATA.review) (function(){
+    var R = DATA.review;
+    document.getElementById('thesis-review').hidden = false;
+
+    // -- peer gross-margin chart --
+    (function(){
+      var W = 1000, H = 300, padL = 54, padR = 16, padT = 16, padB = 28;
+      var plotW = W-padL-padR, plotH = H-padT-padB;
+      var series = R.peer_gross_margin;
+      var names = Object.keys(series);
+      var colors = {FN:'#0b0b0b', COHR:'#2a78d6', LITE:'#eb6834', CLS:'#1baf7a', JBL:'#eda100'};
+      var n = Math.max.apply(null, names.map(function(k){return series[k].length;}));
+
+      var allVals = [];
+      names.forEach(function(k){ series[k].forEach(function(p){ allVals.push(p.gross_margin); }); });
+      var minV = Math.min.apply(null, allVals), maxV = Math.max.apply(null, allVals);
+      var pad = (maxV-minV)*0.1 || 0.02;
+      minV -= pad; maxV += pad;
+
+      function x(i){ return padL + (i/(n-1)) * plotW; }
+      function y(v){ return padT + (1 - (v-minV)/(maxV-minV)) * plotH; }
+
+      var svg = document.getElementById('peer-svg');
+      var ns = 'http://www.w3.org/2000/svg';
+
+      [0.25,0.5,0.75].forEach(function(f){
+        var v = minV + (maxV-minV)*f;
+        var ly = y(v);
+        var l = document.createElementNS(ns,'line');
+        l.setAttribute('x1',padL); l.setAttribute('x2',W-padR); l.setAttribute('y1',ly); l.setAttribute('y2',ly);
+        l.setAttribute('class','grid-line');
+        svg.appendChild(l);
+        var t = document.createElementNS(ns,'text');
+        t.setAttribute('x',padL-8); t.setAttribute('y',ly+3.5); t.setAttribute('text-anchor','end'); t.setAttribute('class','axis-label');
+        t.textContent = (v*100).toFixed(0)+'%';
+        svg.appendChild(t);
+      });
+
+      var legendEl = document.getElementById('peer-legend');
+      names.forEach(function(name){
+        var pts = series[name];
+        var offset = n - pts.length; // right-align shorter series so "latest" always lines up
+        var path = pts.map(function(p,i){ return (i===0?'M':'L') + x(offset+i) + ',' + y(p.gross_margin); }).join(' ');
+        var el = document.createElementNS(ns,'path');
+        el.setAttribute('d',path); el.setAttribute('fill','none'); el.setAttribute('stroke',colors[name]||'#999');
+        el.setAttribute('stroke-width', name==='FN' ? '3' : '2');
+        svg.appendChild(el);
+        var dot = document.createElementNS(ns,'circle');
+        var last = pts[pts.length-1];
+        dot.setAttribute('cx', x(n-1)); dot.setAttribute('cy', y(last.gross_margin)); dot.setAttribute('r','3.5'); dot.setAttribute('fill', colors[name]||'#999');
+        svg.appendChild(dot);
+
+        var item = document.createElement('span'); item.className = 'item';
+        item.innerHTML = '<span class="line" style="background:'+(colors[name]||'#999')+'"></span>' + name + ' (' + (last.gross_margin*100).toFixed(1) + '%)';
+        legendEl.appendChild(item);
+      });
+
+      var xTick0 = document.createElementNS(ns,'text');
+      xTick0.setAttribute('x',padL); xTick0.setAttribute('y',H-padB+18); xTick0.setAttribute('text-anchor','start'); xTick0.setAttribute('class','axis-label');
+      xTick0.textContent = '8 quarters ago';
+      svg.appendChild(xTick0);
+      var xTick1 = document.createElementNS(ns,'text');
+      xTick1.setAttribute('x',W-padR); xTick1.setAttribute('y',H-padB+18); xTick1.setAttribute('text-anchor','end'); xTick1.setAttribute('class','axis-label');
+      xTick1.textContent = 'latest quarter';
+      svg.appendChild(xTick1);
+    })();
+
+    // -- EV/EBITDA bridge --
+    (function(){
+      var e = R.ev_ebitda_reconciliation;
+      var el = document.getElementById('ebitda-bridge');
+      el.innerHTML =
+        '<span class="bug-flag">FORMULA BUG FOUND</span>' +
+        '<div style="font-size:11.5px; color:var(--ink-2); margin-bottom:10px;">' + e.workbook_formula_bug.cell + ' (' + e.workbook_formula_bug.as_written + '): ' + e.workbook_formula_bug.issue + '</div>' +
+        '<div class="review-stat"><span class="k">Operating-EBITDA basis</span><span class="v">' + e.operating_up_multiple.toFixed(2) + 'x</span></div>' +
+        '<div class="review-stat"><span class="k">Net-income-up basis</span><span class="v">' + e.net_income_up_multiple.toFixed(2) + 'x</span></div>' +
+        '<div class="review-stat"><span class="k">Yahoo-stated</span><span class="v">' + e.yahoo_stated_multiple.toFixed(2) + 'x</span></div>' +
+        '<div class="review-note">Gap = $' + e.non_operating_income_mm.toFixed(0) + 'mm of non-operating interest income (FN\'s cash pile) folded into "EBITDA" by the net-income-up method. Yahoo\'s multiple looks cheaper than the operating business alone justifies.</div>';
+    })();
+
+    // -- Q1 FY27 bridge --
+    (function(){
+      var b = R.q1_fy27_bridge;
+      var el = document.getElementById('q1-bridge');
+      var rows = b.scenarios.map(function(s){
+        return '<tr><td>' + s.scenario + '</td><td>$' + s['Q1 FY27E revenue ($mm)'] + 'mm</td><td>' + s['gross margin needed'] + '</td><td>' + s['margin bps vs Q1 FY26 actual'] + '</td></tr>';
+      }).join('');
+      el.innerHTML =
+        '<table class="scenario-table"><thead><tr><th>Scenario</th><th>Revenue</th><th>Margin</th><th>vs Q1 FY26</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<div class="review-note">Q1 FY26 actual: $' + b.q1_fy26_actual.revenue_mm.toFixed(0) + 'mm rev, ' + (b.q1_fy26_actual.gross_margin*100).toFixed(1) + '% margin, $' + b.q1_fy26_actual.fcf_mm.toFixed(0) + 'mm FCF, $' + b.q1_fy26_actual.inventory_mm.toFixed(0) + 'mm inventory. Watch: margin vs. ~12%, FCF vs. $' + b.q1_fy26_actual.fcf_mm.toFixed(0) + 'mm prior-year comp, inventory (Q4 FY26: $' + b.q4_fy26_inventory_mm.toFixed(0) + 'mm) growing faster or slower than revenue.</div>';
+    })();
+
+    // -- options implied move --
+    (function(){
+      var m = R.options_implied_move;
+      var el = document.getElementById('implied-move');
+      el.innerHTML =
+        '<div class="review-stat"><span class="k">Spot (as of ' + m.as_of + ')</span><span class="v">$' + m.spot.toFixed(2) + '</span></div>' +
+        '<div class="review-stat"><span class="k">Implied move, Nov 2 print</span><span class="v">±' + (m.implied_move_pct*100).toFixed(1) + '% ($' + m.implied_move_dollars.toFixed(0) + ')</span></div>' +
+        '<div class="review-stat"><span class="k">Last actual earnings move</span><span class="v">' + (m.last_actual_earnings_move_pct*100).toFixed(1) + '%</span></div>' +
+        '<div class="review-note">Calendar-spread estimate: IV ' + m.expiry_pre_earnings + ' (pre-earnings) ' + (m.iv_pre*100).toFixed(0) + '% vs. ' + m.expiry_post_earnings + ' (spans earnings) ' + (m.iv_post*100).toFixed(0) + '%. Priced move is smaller than August\'s realized ~22% move — two-sided read, not a one-sided setup.</div>';
+    })();
+
+    // -- data gaps --
+    (function(){
+      var el = document.getElementById('data-gaps');
+      R.data_gaps.forEach(function(g){
+        var li = document.createElement('li');
+        li.innerHTML = '<b>' + g.item + '.</b> ' + g.reason;
+        el.appendChild(li);
+      });
+    })();
+  })();
 })();
 </script>

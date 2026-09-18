@@ -74,6 +74,28 @@ sourced from public aggregators) — mapping IBKR's fundamentals XML fields
 into that schema is the next step once TWS/Gateway is reachable to inspect
 the real payload.
 
+### Short thesis model review
+
+`notebooks/fn_short_thesis_review.ipynb` is a follow-up review of
+`FN_Short_Thesis_Model.xlsx` (the standalone short-thesis workbook, not part of
+`garch_forecast/`), covering six findings: no cached formula values (worked
+around with the `formulas` library, since Excel/LibreOffice aren't available
+here — still needs a real Ctrl+Alt+F9-and-save for the actual file), no peer
+margin-degradation benchmark (real EDGAR data vs. COHR/LITE/CLS/JBL —
+`garch_forecast/peer_comps.py`), no product-level margin breakdown (confirmed
+unresolvable — FN reports one segment), an unreconciled EV/EBITDA discrepancy
+(resolved exactly, plus a real formula bug found in the workbook), no quarterly
+bridge to the Nov 2 earnings catalyst (built from FN's own quarterly EDGAR
+history), and no options/positioning data (live IBKR options pull for the
+implied move into earnings; open interest and short interest flagged as gaps,
+not fabricated).
+
+Run it with `jupyter nbconvert --to notebook --execute --inplace
+notebooks/fn_short_thesis_review.ipynb` (needs IBKR connected for the last
+section). It exports `output/FN_short_thesis_review.json`, which
+`web/build_dashboard_data.py` picks up automatically and renders as a "Short
+thesis review" section on the dashboard if present.
+
 ### Price drivers (FRED + SEC EDGAR)
 
 `garch_forecast/drivers.py` builds a daily panel of the variables commonly cited

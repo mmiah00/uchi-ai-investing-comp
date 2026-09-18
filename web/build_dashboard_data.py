@@ -139,6 +139,11 @@ def render_dashboard(data_payload: dict, fundamentals: dict, template_path: Path
     template = template_path.read_text()
     combined = dict(data_payload)
     combined["fundamentals"] = fundamentals
+
+    review_path = REPO_ROOT / "output" / "FN_short_thesis_review.json"
+    if review_path.exists():
+        combined["review"] = json.loads(review_path.read_text())
+
     injected = template.replace("__FN_DATA_JSON__", json.dumps(combined, separators=(",", ":")))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(injected)
