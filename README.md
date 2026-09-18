@@ -74,6 +74,60 @@ sourced from public aggregators) — mapping IBKR's fundamentals XML fields
 into that schema is the next step once TWS/Gateway is reachable to inspect
 the real payload.
 
+### Price drivers (FRED + SEC EDGAR)
+
+`garch_forecast/drivers.py` builds a daily panel of the variables commonly cited
+as FN price drivers -- data center/AI infrastructure demand, tech-sector
+valuation/sentiment, and Fabrinet's own financial performance -- and fits an
+ARX-GJR-GARCH to see which are actually statistically significant for its daily
+returns:
+
+```
+python -m garch_forecast.drivers --use-cache   # reuse cached FRED/EDGAR/price pulls
+python -m garch_forecast.drivers               # fresh pulls (needs .env + IBKR)
+```
+
+Needs a free FRED API key in `.env` at the repo root: `FRED-API-KEY=...` (get
+one at https://fred.stlouisfed.org/docs/api/api_key.html). `.env` is gitignored.
+
+Data sources per driver:
+- **Data center / AI demand**: no FRED series tracks data center capex
+  directly, so this uses proxies -- private fixed investment in information
+  processing equipment (`A679RC1Q027SBEA`), industrial production and new
+  orders for computer/electronic products (`IPG334S`, `A34SNO`), and
+  semiconductor PPI (`PCU334413334413`) as a margin/input-cost signal.
+- **Valuation & tech sentiment**: NASDAQ Composite, VIX, 10-year Treasury
+  yield, and the Baa-10Y credit spread (`NASDAQCOM`, `VIXCLS`, `DGS10`,
+  `BAA10Y`).
+- **Financial performance**: real quarterly revenue/EPS growth and margins
+  pulled straight from Fabrinet's 10-Q/10-K XBRL filings via SEC EDGAR's free
+  API (`fundamentals_edgar.py`) -- no key needed, and a better source than
+  IBKR's fundamentals endpoint, which this account isn't entitled to (see
+  above).
+- **Customer concentration**: not included as a regressor. Fabrinet discloses
+  this qualitatively (reliance on a handful of large customers) in its 10-K
+  risk factors, not as a structured time series -- there's nothing to pull.
+
+Every series is shifted to when it actually became public (FRED publication
+lag, EDGAR filing date) before being forward-filled onto trading days and
+lagged one more day relative to the return it explains, so the regression
+can't see anything before the market could have. As of the 2019-11 to
+2026-09 sample (1,725 trading days), only two drivers clear p<0.10 at daily,
+1-day-lagged frequency: `electronics_new_orders` (p≈0.056, positive — a
+leading indicator of demand for what Fabrinet manufactures) and
+`eps_growth_yoy` (p≈0.039, negative — reads as a valuation/mean-reversion
+effect rather than "growth is bad"). Broad tech sentiment (NASDAQ, VIX,
+rates) shows no significant *lagged* daily effect, which is unsurprising —
+same-day market beta is a different question than whether yesterday's level
+predicts today's return.
+
+This is deliberately kept separate from the 12-month Monte Carlo forecast:
+an exogenous-regressor forecast needs *future* values of every regressor for
+the full horizon, and nobody has a credible 12-month path for the NASDAQ or
+VIX. `simulate_price_paths`'s `drift_overrides` hook is where a bounded,
+short-horizon version of this (drivers held at their last known level) would
+plug into the forward simulation.
+
 ### Model notes
 
 - Mean equation: constant (GARCH's job is the variance equation, not
